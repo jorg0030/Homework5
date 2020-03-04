@@ -1,0 +1,112 @@
+---
+title: "Homework 5"
+output: html_document
+---
+```{r}
+Crime<-read.csv("crimedata.csv")
+Crime2<-read.csv("crimedata10.csv")
+library(rpart)
+library(rpart.plot)
+summary(Crime)
+```
+
+## 2. Create Regression Tree
+
+```{r}
+CrimeTree<- rpart(Crime$CrimeRate ~Crime$ExpenditureYear+Crime$StateSize+Crime$BelowWage+Crime$HighYouthUnemploy+Crime$MatureUnemployment+Crime$Education, data = Crime)
+```
+
+## 3. Tree Summary
+
+Per capita expendature on police and the number of low income families are the most important variables.
+
+```{r}
+summary(CrimeTree)
+```
+
+
+## 4. Plot the Tree
+
+```{r}
+rpart.plot(CrimeTree, digits = 3, fallen.leaves = TRUE,tweak=1.3)
+```
+
+
+This diagram illustrated that expenditure on police per year is the best predictor for which to divide crime rate (crime rates within groups have maximum homogenaity). The darker blue leaves indicate more certain predictions which also indicates that Expendature year is a better predictor that StateSizer, even at the second level of division. 
+
+## 5. Mean crime rates for each group
+
+Police Expendatures < 77 million per year: 84.5
+Police Expendatures < 23 million per year: 72.5
+Police Expendatures between 23 and 77 million: 97.6
+Police Expendatures < 77 million: 120
+Police expendatures > 108 million: 111
+Police expendatures between 77 and 108 million: 131
+Mean of all data: 103
+
+## 6. Dropped variables
+
+BelowWag, HighYouthUnemploy, MatureUnemployment and Education were all dropped from this analysis.
+
+Minimize cross validation error
+
+## 7. Predicting Crime rates 10 years in the future
+
+```{r}
+PredCrime <- predict(CrimeTree, Crime2)
+```
+
+## 8. Correlation of predicted and actual crime rate
+
+```{r}
+cor(PredCrime, Crime2$CrimeRate,method="pearson")
+```
+The correlation coefficient is ~0.73 for this analysis.
+
+
+## 9. Mean absolute error - average distance of predicted from actual values
+
+```{r}
+MAE <- function(actual, predicted)  {
+  mean(abs(actual - predicted))
+}
+MAE(predicted = PredCrime, actual = Crime2$CrimeRate)
+```
+
+"CrimeTree" was quite good at predicting crime rate as it matched the actual data approximately 73% of the time. The mean absolute error was also fairly low as a difference of ~21 crimes is not especially sigificant when considering the crime rate per million people.
+
+## 10. Null distribution - accuracy of a random guess
+
+```{r}
+MAE2 <- function(data,indices)  {
+  d<-data[indices]
+  return(mean(abs(Crime$CrimeRate - d)))
+}
+
+library(boot)
+
+CrimeGuesses=boot(data=Crime$CrimeRate, statistic=MAE2, R=1000)
+
+{hist(CrimeGuesses$t)
+abline(v=mean(CrimeGuesses$t),col="blue")}
+
+mean(CrimeGuesses$t)
+```
+
+Mean absolute error ~32.64
+
+
+## 11. Mean absolute error from random guesses ~32.64
+This is greater than the mean absolute error calculated for CrimeTree (~21.2)
+
+## 12. Compare mean absolute errors
+
+```{r}
+p.value=length(which((CrimeGuesses$t<0.5198)==T))/1000
+p.value
+```
+
+Yes, there the mean absolute errors for CrimeTree and the model created by random chance are significantly different (p = 0)
+
+WHERE DID THE 0.5198 IN THE CODE ABOVE COME FROM?
+
